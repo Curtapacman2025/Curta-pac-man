@@ -1,0 +1,137 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Pac-Man Web-Version</title>
+<style>
+  body {{ background: black; margin: 0; }}
+  canvas {{ display: block; margin: 0 auto; background: black; }}
+  #startScreen {{
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: black; color: white; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; font-family: sans-serif;
+    z-index: 10;
+  }}
+  button {{ font-size: 24px; padding: 10px 20px; background: yellow; border: none; cursor: pointer; }}
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="1200" height="1200"></canvas>
+<div id="startScreen">
+  <h1>Pac-Man mit eigenen Figuren</h1>
+  <button onclick="startGame()">Spiel starten</button>
+</div>
+<audio id="wakaSound" src="waka.wav"></audio>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const startScreen = document.getElementById('startScreen');
+const wakaSound = document.getElementById('wakaSound');
+
+const tileSize = 50;
+const cols = 24;
+const rows = 24;
+let level = [];
+let player = {{ x: 1, y: 1, dir: 'right' }};
+let enemies = [];
+let points = [];
+let poweredUp = false;
+let powerUpTime = 0;
+let lives = 3;
+
+function startGame() {{
+  startScreen.style.display = 'none';
+  initLevel();
+  initPoints();
+  initEnemies();
+  requestAnimationFrame(loop);
+}}
+
+function initLevel() {{
+  level = [];
+  for(let y=0; y<rows; y++) {{
+    let row = [];
+    for(let x=0; x<cols; x++) {{
+      if (x==0 || y==0 || x==cols-1 || y==rows-1 || (x%4==0 && y%4==0)) row.push(1);
+      else row.push(0);
+    }}
+    level.push(row);
+  }}
+}}
+
+function initPoints() {{
+  points = [];
+  for(let y=1; y<rows-1; y++) {{
+    for(let x=1; x<cols-1; x++) {{
+      if (level[y][x]==0) points.push({{ x, y }});
+    }}
+  }}
+}}
+
+function initEnemies() {{
+  enemies = [{{ x: 22, y: 22, dir: 'left' }}];
+}}
+
+document.addEventListener('keydown', e => {{
+  if (e.key.startsWith('Arrow')) player.dir = e.key.replace('Arrow','').toLowerCase();
+}});
+
+function loop() {{
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}}
+
+function update() {{
+  let dx=0, dy=0;
+  if (player.dir=='left') dx=-1;
+  if (player.dir=='right') dx=1;
+  if (player.dir=='up') dy=-1;
+  if (player.dir=='down') dy=1;
+
+  let nx=player.x+dx, ny=player.y+dy;
+  if(level[ny][nx]==0) {{ player.x=nx; player.y=ny; }}
+
+  points = points.filter(p=> !(p.x==player.x && p.y==player.y));
+  if (points.length%5==0) wakaSound.play();
+
+  enemies.forEach(e=> {{
+    let dir = Math.random()<0.5 ? (Math.random()<0.5?'left':'right') : (Math.random()<0.5?'up':'down');
+    let ex = e.x + (dir=='left'?-1:dir=='right'?1:0);
+    let ey = e.y + (dir=='up'?-1:dir=='down'?1:0);
+    if(level[ey][ex]==0) {{ e.x=ex; e.y=ey; }}
+  }});
+
+  enemies.forEach(e=> {{
+    if(e.x==player.x && e.y==player.y) {{
+      lives--;
+      player.x=1; player.y=1;
+      if(lives<=0) alert('Game Over!');
+    }}
+  }});
+}}
+
+function draw() {{
+  ctx.fillStyle='black'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let y=0;y<rows;y++) {{
+    for(let x=0;x<cols;x++) {{
+      if(level[y][x]==1) {{
+        ctx.fillStyle='yellow';
+        ctx.fillRect(x*tileSize,y*tileSize,tileSize,tileSize);
+      }}
+    }}
+  }}
+  ctx.fillStyle='white';
+  points.forEach(p=> ctx.fillRect(p.x*tileSize+20, p.y*tileSize+20,10,10));
+  ctx.fillStyle='blue';
+  enemies.forEach(e=> ctx.fillRect(e.x*tileSize, e.y*tileSize, tileSize, tileSize));
+  ctx.fillStyle='yellow';
+  ctx.beginPath();
+  ctx.arc(player.x*tileSize+tileSize/2, player.y*tileSize+tileSize/2, tileSize/2, 0.25*Math.PI, 1.75*Math.PI);
+  ctx.lineTo(player.x*tileSize+tileSize/2, player.y*tileSize+tileSize/2);
+  ctx.fill();
+}}
+</script>
+</body>
+</html>
